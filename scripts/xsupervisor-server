@@ -1,0 +1,43 @@
+#!/bin/bash
+#this script must run under the service working directory.
+
+LANG="en_US.UTF-8"
+export LANG
+
+STARTUP=`date`
+echo "startup time: ${STARTUP}"
+
+source /etc/profile
+if [[ $0 == "/"* ]] ; then
+    root=${0/xsupervisor-server/}
+else
+    root=`pwd`
+fi
+
+source ${root}ip.conf
+
+JVM_PROPERTIES=" -Xms1024m -Xmx4096m -Xmn512M -XX:MaxDirectMemorySize=1000M -XX:MaxPermSize=128M -XX:+UseConcMarkSweepGC -Xss512K -XX:+UseParNewGC -XX:+UseCompressedOops -XX:+PrintReferenceGC "
+
+JAVA_PROPERTIES="-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp -verbose:gc -Xloggc:gc.log -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCApplicationStoppedTime -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false $JAVA_PROPERTIES"
+
+serviceMainClass="com.xiaomi.xsupervisor.XsupervisorMain"
+
+classpath="${root}:${root}configuration:${root}classes"
+
+for jarpath in `ls ${root}library/*.jar`
+do
+    classpath=$classpath:$jarpath
+done
+
+oldpid=`jps | grep XsupervisorMain | awk '{print $1}'`
+echo "killing oldpid: ${oldpid}"
+kill ${oldpid}
+sleep 1
+
+echo -e "#!/bin/bash\n
+source /etc/profile;\n
+java $JAVA_PROPERTIES ${JVM_PROPERTIES} -classpath $classpath $serviceMainClass -r -ip ${ip} $@ " > ${root}run.sh
+chmod a+x ${root}run.sh
+nohup ${root}run.sh > /data/soft/xsupervisor/logs/xsupervisor.stdout.log 2>&1 &
+
+exit

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+source /etc/profile
+if  [[ $0 == "/"*  ]] ; then
+    root=${0/xsupervisorctl/}
+else
+    root=`pwd`
+fi
+
+
+JVM_PROPERTIES=" -Xms1024m -Xmx2048m -Xmn512M -XX:MaxDirectMemorySize=1000M -XX:MaxPermSize=128M -XX:+UseConcMarkSweepGC -Xss512K -XX:+UseParNewGC -XX:+UseCompressedOops -XX:+PrintReferenceGC "
+
+JAVA_PROPERTIES="-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp -verbose:gc -Xloggc:gc.log -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCApplicationStoppedTime -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false $JAVA_PROPERTIES"
+
+classpath="${root}:${root}classes"
+for jarpath in `ls ${root}library/*.jar`; do
+    classpath=${classpath}:${jarpath}
+done
+
+execClass="com.xiaomi.xsupervisor.XsupervisorCtl"
+exec java ${JAVA_PROPERTIES} ${JVM_PROPERTIES} -classpath ${classpath} ${execClass} $@
